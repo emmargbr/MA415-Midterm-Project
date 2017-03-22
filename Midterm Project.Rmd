@@ -1,0 +1,107 @@
+---
+title: "MA 415 Midterm Project"
+author: "Emma Brown"
+date: "Due: March 22, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## MA 415 Midterm Project: OSHA Data
+
+This project cleans and prepares the OSHA datset collected by NICAR to for analysis to report on the most dangerous places to work in Massachusetts.
+
+The necessary libraries were loaded:
+
+```{r libraries}
+require(data.table)
+require(foreign)
+require(dplyr)
+require(magrittr)
+require(tidyr)
+require(sqldf)
+require(ggplot2)
+require(xtable)
+require(knitr)
+require(DT)
+```
+
+The database files were then read into the file to be examined:
+
+```{r database files}
+# load the database files
+osha <- read.dbf("osha.dbf")
+accid <- read.dbf("accid.dbf")
+scc <- read.dbf("scc.dbf")
+hazsub <- read.dbf("hazsub.dbf")
+debt <- read.dbf("debt.dbf")
+history <- read.dbf("history.dbf")
+admpay <- read.dbf("admpay.dbf")
+prog <- read.dbf("prog.dbf")
+relact <- read.dbf("relact.dbf")
+```
+
+Creating tables
+
+```{r}
+# creates a new table from osha of date, inspection number, company name, address, state, zip code, city, county, and total violations
+new_osha <- sqldf("select OSHA1MOD, ACTIVITYNO, ESTABNAME,
+SITEADD, SITESTATE, SITEZIP, 
+SITECITY, SITECNTY, TOTALVIOLS
+                 from osha")
+kable(new_osha)
+
+
+# creates a subset from the scc lookup table of MA counties
+scc_MA <- sqldf("select *
+                from scc
+                where STATE == 'MA'")
+
+# query for Massachusetts counties with reported violations and their frequencies
+county_viols <- sqldf("select scc_MA.COUNTY, SUM(TOTALVIOLS)
+                      from new_osha, scc_MA
+                      where new_osha.SITECNTY = scc_MA.COUNTY
+                      group by scc_MA.COUNTY")
+#renames columns
+colnames(county_viols) <- c("COUNTY CODE",
+                            "TOTAL VIOLATIONS")
+#creates table
+kable(county_viols)
+
+
+# now by city
+city_viols <- sqldf("select scc_MA.NAME, SUM(TOTALVIOLS)
+                    from new_osha, scc_MA
+                    where new_osha.SITECITY = scc_MA.CITY
+                    group by scc_MA.CITY")
+colnames(city_viols) <- c("CITY NAME",
+                          "TOTAL VIOLATIONS")
+# creates table
+kable(city_viols)
+
+
+# accident lookup table
+acc <- read.dbf("acc.dbf")
+# groups accidents by category
+categories <- sqldf("select CATEGORY, COUNT(*)
+                    from acc
+                    group by CATEGORY")
+
+# reassigns values of DEGREE levels
+levels(accid$DEGREE) <- c("N/A",
+                          "fatality",
+                          "hospitalized injury",
+                          "nonhospitalized injury")
+# creates table of frequencies of degree injuries
+degree_injuries <- sqldf("select DEGREE, COUNT(*)
+                         from accid
+                         group by DEGREE")
+colnames(degree_injuries) <- c("Degree of Injury",
+                               "Frequency")
+kable(degree_injuries)
+
+
+```
+
