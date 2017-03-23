@@ -1,23 +1,3 @@
----
-title: "MA 415 Midterm Project"
-author: "Emma Brown"
-date: 'Due: March 22, 2017'
-output:
-  html_document: default
-  pdf_document: default
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## MA 415 Midterm Project: OSHA Data
-
-This project cleans and prepares the OSHA datset collected by NICAR to for analysis to report on the most dangerous places to work in Massachusetts.
-
-The necessary libraries were loaded:
-
-```{r libraries}
 require(data.table)
 require(foreign)
 require(dplyr)
@@ -27,11 +7,8 @@ require(sqldf)
 require(ggplot2)
 require(xtable)
 require(knitr)
-```
 
-Reading the database files we want:
-
-```{r database files}
+# Reading the database files we want
 accid <- data.table(read.dbf("accid.dbf"))
 acc <- data.table(read.dbf("lookups/acc.dbf"))
 osha <- data.table(read.dbf("osha.dbf"))
@@ -39,6 +16,7 @@ scc <- data.table(read.dbf("lookups/scc.dbf"))
 scc <- filter(scc, STATE=="MA")
 occ <- data.table(read.dbf("lookups/occ.dbf"))
 hzs <- data.table(read.dbf("lookups/hzs.dbf"))
+
 # How many unique inspection numbers are there?
 length(unique(accid$ACTIVITYNO))
 
@@ -46,9 +24,7 @@ length(unique(accid$ACTIVITYNO))
 accid <- sqldf("select *
                from accid
                group by ACTIVITYNO")
-```
-Let's join some data:
-```{r}
+
 # Joining all occupations into the accid table
 accid <- data.table(accid)
 setkey(accid, OCC_CODE)
@@ -149,6 +125,7 @@ leftCols <- sub("SOURCE", "VALUE", leftCols)
 accid <- source[accid][, leftCols, with=FALSE]
 colnames(accid)[colnames(accid)=="VALUE"] <- "SOURCE-INJ"
 
+
 # What kind of task were they doing?
 levels(accid$TASK) <- c("N/A",
                         "Assigned",
@@ -164,10 +141,7 @@ levels(accid$DEGREE) <- c("N/A",
 accid <- sqldf("select *
                from accid
                where DEGREE != 'N/A'")
-```
-Now that's ready to work with
-Let's look at some of this data:
-```{r}
+
 # Let's look at some of this data 
 # Histogram of Accidents by Degree
 
@@ -177,9 +151,8 @@ p + scale_fill_brewer(palette="Blues") +
   xlab("Degree of Accident") + 
   ylab("Frequency") +
   ggtitle("Histogram of Degree of Accidents") 
-```
-As shown in the histogram of Degree of Accidents, most of the reported accidents are fatal. Let's see what occupations have the most accidents:
-```{r}
+# Most of these accidents were fatal, that's not good...
+
 # What are the most dangerous occupations?
 table <- table(accid$OCCUPATION)
 sorted <- sort(table)
@@ -192,11 +165,10 @@ ggplot(subset, aes(x=OCCUPATION, fill=as.factor(DEGREE))) +
   theme(axis.text.x = element_text(angle = 60, hjust = 1)) + 
   labs(title = "Degree of Accidents for Top 10 Occupations", 
        x = "Occupation", y = "Frequency", col= "Degree")
-```
-The histogram shows Construction workers have the riskiest job.
+# Construction workers clearly have the most fatal accidents
 
-Now onto Osha!
-```{r}
+# Now onto osha
+
 osha <- data.table(read.dbf("osha.dbf"))
 osha <- sqldf("select ACTIVITYNO, ESTABNAME,
               SITEADD, OPENDATE, SITECNTY, SITECITY, TOTALVIOLS
@@ -207,9 +179,7 @@ osha <- sqldf("select *
               from osha
               group by ACTIVITYNO")
 
-```
-Join the city to the OSHA data
-```{r}
+# Join city
 osha <- data.table(osha)
 scc <- data.table(scc)
 setkey(osha, SITECNTY)
@@ -219,9 +189,7 @@ setkey(scc, CITY)
 leftCols <- colnames(osha)
 leftCols <- sub("SITECITY", "NAME", leftCols)
 osha <- scc[osha][, leftCols, with=FALSE]
-```
-Let's look at some of this...what are the top 10 most dangerous cities in Massachusetts?
-```{r}
+
 # Most Dangerous Cities
 table <- table(osha$NAME)
 sorted <- sort(table)
@@ -233,5 +201,3 @@ ggplot(subset, aes(x=NAME)) +
   theme(axis.text.x = element_text(angle = 60, hjust = 1)) + 
   labs(title = "Most Dangerous Cities", 
        x = "City", y = "Frequency")
-```
-This makes sense because Boston is the most densely populated city in Massachusetts. It would be interesting to see how this would compare by population, or perhaps on a nationwide scale? Where is the most dangerous place to work in the country?
